@@ -28,7 +28,6 @@
         let grayscaleFunc;
 
         Module.onRuntimeInitialized = () => {
-            // تجهيز الدالة للاستدعاء
             grayscaleFunc = Module.cwrap('to_grayscale', null, ['number', 'number', 'number']);
         };
 
@@ -37,37 +36,28 @@
             reader.onload = function(event) {
                 const img = new Image();
                 img.onload = function() {
-                    // عرض الصورة الأصلية
                     canvasOriginal.width = img.width;
                     canvasOriginal.height = img.height;
                     ctxOriginal.drawImage(img, 0, 0);
 
-                    // الحصول على بيانات البكسلات
                     const imageData = ctxOriginal.getImageData(0, 0, img.width, img.height);
                     const data = imageData.data;
 
-                    // --- هنا يحدث سحر الويب أسمبلي ---
                     if (!grayscaleFunc) {
                         alert("Wasm module not ready yet!");
                         return;
                     }
 
-                    // 1. حجز ذاكرة في بيئة Wasm
                     const wasmMemory = Module._malloc(data.length);
-                    // 2. نسخ بيانات الصورة إلى ذاكرة Wasm
                     Module.HEAPU8.set(data, wasmMemory);
-                    // 3. استدعاء دالة C++ لمعالجة البيانات في مكانها
                     grayscaleFunc(wasmMemory, img.width, img.height);
-                    // 4. قراءة البيانات المُعدَّلة من ذاكرة Wasm
                     const resultData = new Uint8ClampedArray(Module.HEAPU8.buffer, wasmMemory, data.length);
 
-                    // عرض الصورة الجديدة
                     canvasGrayscale.width = img.width;
                     canvasGrayscale.height = img.height;
                     const newImageData = new ImageData(resultData, img.width, img.height);
                     ctxGrayscale.putImageData(newImageData, 0, 0);
 
-                    // 5. تحرير الذاكرة
                     Module._free(wasmMemory);
                 }
                 img.src = event.target.result;
